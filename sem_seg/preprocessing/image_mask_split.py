@@ -30,7 +30,6 @@ GT_path = Path(dirpath+'GT/')
 
 images_path = dirpath + 'images/'
 masks_path = dirpath + 'masks/'
-labels_path = dirpath + 'labels/'
 
 exts = ['.png', '_start.png']
 
@@ -76,7 +75,6 @@ for file in raw_path.glob('*/*.png'):
                 
                 # write image and mask to new files
                 
-
                 raw_im.save(images_path + file_end)
                 mask.save(masks_path +  file_end)
                 
