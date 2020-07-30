@@ -5,18 +5,15 @@ import os
 from pathlib import Path
 from PIL import Image
 
-""" This file generates image patches with corresponding the label image.
-
+""" This file generates image patches with corresponding the label image. 
 It also writes .odgt files, where each line is one patch: 
     {"fpath_img": , 
     "fpath_segm": , 
     "width": , 
-    "height": } 
-    
+    "height": }     
 It should be run in the following way:
-    python patch_preparation.py -l 'base_path: \BASE_PATH, start_patch_size: 500, \
-        end_patch_size: 600, step_size: 50, overlap: 200, foreground: 0.2, \
-        intensity_threshold: 195'
+    python patch_preparation.py -l 'base_path: \BASE_PATH, start_patch_size: 500, end_patch_size: 600, step_size: 50, overlap: 200, \
+    foreground: 0.2, intensity_threshold: 195'
 """
 
 
@@ -24,9 +21,7 @@ def crop_image(base_path, patch_size, overlap, foreground, intensity_threshold):
     # note: base_path: /home/kgrigori/patch_data in cluster
     img_path = base_path + '/images/'
     lab_path = base_path + '/labels/'    
-        
     base_path_crop = os.path.join(base_path, str(patch_size))
-
     crop_img_path = base_path_crop + '/images'
     crop_lab_path = base_path_crop + '/labels'
 
@@ -44,41 +39,32 @@ def crop_image(base_path, patch_size, overlap, foreground, intensity_threshold):
 
         for imgs in Path(img_path).glob('*/*.png'):
             image = Image.open(str(imgs.absolute()))
-            
             currlab_path = next(Path(lab_path).glob('*/'+imgs.name))
             lab_img = Image.open(currlab_path)
-            
             img_grade = imgs.parent.name
             
             x_iter_num = (image.size[0])//(patch_size-overlap)
             y_iter_num = (image.size[1])//(patch_size-overlap)
             print("Cropping patches for ", imgs, 'image size: ', image.size, 'x_iter_num=',x_iter_num,'y_iter_num=',y_iter_num,'\n')
-            
             patch_count=0
-
             for xi in range(x_iter_num+1):
                 for yi in range(y_iter_num+1):
-                    
                     if xi == 0 or image.size[0] < patch_size:
                         cx = 0
                     elif xi == x_iter_num:
                         cx = image.size[0]-patch_size
                     else:
                         cx = xi*(patch_size-overlap)
-                    
                     if yi == 0 or image.size[1] < patch_size:
                         cy = 0
                     elif yi == y_iter_num:
                         cy = image.size[1]-patch_size
                     else:
                         cy = yi*(patch_size-overlap)
-                    
-                    
                     if image.size[0] < patch_size:
                         patch_size_x_cur = image.size[0]
                     else:
                         patch_size_x_cur = patch_size
-                    
                     if image.size[1] < patch_size:
                         patch_size_y_cur = image.size[1]
                     else:
@@ -93,7 +79,6 @@ def crop_image(base_path, patch_size, overlap, foreground, intensity_threshold):
                         box = (cx, cy, cx + patch_size_x_cur, cy + patch_size_y_cur)
                         new_name_ti = 'image_' + imgs.name + '_grade_' + img_grade + '_cropped_' + str(patch_size) + '_x_' + str(cx) + '_y_' + str(cy) + '.png'
                         new_name_gt = 'label_' + imgs.name + '_grade_' + img_grade + '_cropped_' + str(patch_size) + '_x_' + str(cx) + '_y_' + str(cy) + '.png'
-    
                         crop_ti = image.crop(box)
                         
                         # check to see if this image has sufficient foreground:
@@ -107,7 +92,6 @@ def crop_image(base_path, patch_size, overlap, foreground, intensity_threshold):
                             # print('xi = {}, yi = {}, cx = {}, cy = {}'.format(xi,yi,cx,cy))
                             save_path_ti = os.path.join(crop_img_path, new_name_ti)
                             crop_ti.save(save_path_ti)
-                            
                             crop_gt = lab_img.crop(box)
                             save_path_gt = os.path.join(crop_lab_path, new_name_gt)
                             crop_gt.save(save_path_gt)
