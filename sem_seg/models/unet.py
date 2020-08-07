@@ -1,6 +1,6 @@
 """ PyTorch U-Net for semantic segmentation
     Based on:
-        - https://github.com/usuyama/pytorch-unet/blob/master/pytorch_unet.py
+        - https://arxiv.org/abs/1505.04597
         - https://jinglescode.github.io/2019/11/07/biomedical-image-segmentation-u-net/
 """
 
@@ -35,8 +35,8 @@ class up_conv(nn.Module):
 
     def forward(self, x):
         x = self.up(x)
-        return x
-        
+        return x        
+
 
 class UNet(nn.Module):
     def __init__(self, n_filters = 64, in_ch=3, out_ch=6):
@@ -45,7 +45,10 @@ class UNet(nn.Module):
         n1 = n_filters
         filters = [n1, n1 * 2, n1 * 4, n1 * 8, n1 * 16]
 
-        self.Maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.Maxpool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.Maxpool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.Maxpool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.Maxpool4 = nn.MaxPool2d(kernel_size=2, stride=2)
 
         self.Conv1 = conv_block(in_ch, filters[0])
         self.Conv2 = conv_block(filters[0], filters[1])
@@ -70,16 +73,16 @@ class UNet(nn.Module):
     def forward(self, x):
         e1 = self.Conv1(x)
         
-        e2 = self.Maxpool(e1)
+        e2 = self.Maxpool1(e1)
         e2 = self.Conv2(e2)
         
-        e3 = self.Maxpool(e2)
+        e3 = self.Maxpool2(e2)
         e3 = self.Conv3(e3)
         
-        e4 = self.Maxpool(e3)
+        e4 = self.Maxpool3(e3)
         e4 = self.Conv4(e4)
         
-        e5 = self.Maxpool(e4)
+        e5 = self.Maxpool4(e4)
         e5 = self.Conv5(e5)
         
         d5 = self.Up5(e5)
@@ -89,7 +92,7 @@ class UNet(nn.Module):
         d4 = self.Up4(d5)
         d4 = torch.cat((e3, d4), dim=1)
         d4 = self.Up_conv4(d4)
-        
+
         d3 = self.Up3(d4)
         d3 = torch.cat((e2, d3), dim=1)
         d3 = self.Up_conv3(d3)
