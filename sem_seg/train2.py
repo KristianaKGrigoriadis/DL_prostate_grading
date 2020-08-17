@@ -12,14 +12,16 @@ from torch.utils.data import DataLoader
 from unet import UNet
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print("\ndevice =",device)
+#device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#print("\ndevice =",device)
 
-"""python3 train1.py -l 'dirpath: /home/kgrigori/patch_data/512/, learningrate: 0.01, batch_size: 16, num_workers: 1, plot: True' """
+"""python3 train3.py -l 'dirpath: /home/kgrigori/binary_classification/512/, learningrate: 0.01, batch_size: 1, max_epochs: 200, channels_out: 2'"""
+
+"""python3 train3.py -l 'dirpath: /home/kgrigori/patch_data/512/, learningrate: 0.01, batch_size: 1, max_epochs: 100, channels_out: 6, loss: dice'"""
 
 # define a function to train the model
-def train_fn(train_data, model, criterion, optimizer):
-    print('Training a batch.')
+def train_fn(train_data, model, criterion, optimizer, device):
+    print('Training one epoch.')
     # save the performance on training data
     train_loss = 0
     train_acc = 0
@@ -33,14 +35,12 @@ def train_fn(train_data, model, criterion, optimizer):
         loss.backward()
         optimizer.step()
         train_acc += utils.accuracy(output, labels)
-
+        #print('Batch number {}, \t loss = {}'.format(i, loss.item()))
     return train_loss/len(train_data) , train_acc / len(train_data.dataset)
-    
-    
 
 # define a function to evaluate model performance
-def test_fn(test_data, model, criterion):
-    
+def test_fn(test_data, model, criterion, device):
+    print('Evaluating model on validation data')    
     test_loss = 0
     test_acc = 0
     for i, (images,labels) in enumerate(test_data):
@@ -55,8 +55,11 @@ def test_fn(test_data, model, criterion):
 
 
 def run_training(train_dl, val_dl, model, loss, optimizer, 
-                 batch_size, max_epochs=40, save=True):
+                 batch_size, patch_size, curtime, device, max_epochs, save=True):
     print('\nTraining the model.')
+    
+    modelsave = './patch_size_'+ str(patch_size) + '_batch_size_'+str(batch_size)+'_best_model.tar'
+    
     losses_train = []
     accs_train = []
     losses_val = []
@@ -69,7 +72,7 @@ def run_training(train_dl, val_dl, model, loss, optimizer,
     for epoch in range(max_epochs): 
         print('Epoch: %d' %(epoch))
 
-        train_loss, train_acc = train_fn(train_dl, model, loss, optimizer)
+        train_loss, train_acc = train_fn(train_dl, model, loss, optimizer, device)
         val_loss, val_acc = test_fn(val_dl, model, loss)
         
         losses_train.append(train_loss)
@@ -89,21 +92,22 @@ def run_training(train_dl, val_dl, model, loss, optimizer,
                             'best_accuracy': best_val_acc,
                             'batch_size': batch_size,
                             'best_learning_rate': optimizer.defaults['lr']
-                            },'bestModel.tar')
+                            },modelsave)
         
     
         # if epoch % 10 == 0:
         print(f'\t Train: \tLoss: {train_loss:.6f}\t|\tAcc: {train_acc * 100:.3f}%(train)')
         print(f'\t Validation: \tLoss: {val_loss:.6f}\t|\tAcc: {val_acc * 100:.3f}%(valid)','\n')
-        
-        #convergence criterion
-        # if epoch >= 50 and all((val_loss - torch.tensor(losses_val[-50:-1])) > 0.0):
-            # break
-        k = open('./training_check_file','w')
-        k.write('Finished training epoch '+str(epoch))
-        k.write(f'\t Train: \tLoss: {train_loss:.6f}\t|\tAcc: {train_acc * 100:.3f}%(train)')
-        k.write(f'\t Validation: \tLoss: {val_loss:.6f}\t|\tAcc: {val_acc * 100:.3f}%(valid)','\n')
-        k.close()
+                
+        trainfile = open('./training_check_file_'+patch_size+'_' + curtime,'a')
+        trainfile.write('\nFinished training epoch '+str(epoch)+'\n')
+        trainfile.write(f'\t Train: \tLoss: {train_loss:.6f}\t|\tAcc: {train_acc * 100:.3f}%(train)\n')
+        trainfile.write(f'\t Validation: \tLoss: {val_loss:.6f}\t|\tAcc: {val_acc * 100:.3f}%(valid)\n')
+        trainfile.close()
+
+        # convergence criterion
+        if epoch >= 50 and all((val_loss - torch.tensor(losses_val[-20:-1])) > 0.0):
+            break
         
     secs = int(time.time() - start_time)
     mins = secs / 60
@@ -121,9 +125,9 @@ def run_training(train_dl, val_dl, model, loss, optimizer,
     least_val_loss = min(losses_val)
     print('Lowest validation loss:',least_val_loss,'achieved at epoch:',least_val_epoch)
     
-    atrain = np.array(train_acc)  
+    atrain = np.array(accs_train)  
     best_train_epoch = np.argmax(atrain)
-    best_train_accuracy = max(train_acc)
+    best_train_accuracy = max(accs_train)
     print('Best training accuracy:',best_train_accuracy * 100,'achieved at epoch:',best_train_epoch)
     aval = np.array(accs_val)  
     best_val_epoch = np.argmax(aval)
@@ -139,8 +143,9 @@ def main():
     dirpath = argu_list[0][1]
     learningrate = float(argu_list[1][1])
     batch_size = int(argu_list[2][1])
-    # num_workers = int(argu_list[3][1])
-    # plot = argu_list[4][1]
+    max_epochs = int(argu_list[3][1])
+    channels_out = int(argu_list[4][1])
+    loss = argu_list[5][1]
     
     # get datasets
     patch_size = dirpath.split('/')[-2]
@@ -148,9 +153,8 @@ def main():
     val_odgt = dirpath + 'split/val/'+patch_size+'_val_patches.odgt'
 
     
-    train_ds = segmentation_dataset.SegmentationDataset(train_odgt)
-    val_ds = segmentation_dataset.SegmentationDataset(val_odgt)
-
+    train_ds = segmentation_dataset.SegmentationDataset(train_odgt,train=True)
+    val_ds = segmentation_dataset.SegmentationDataset(val_odgt,train=False)
     
     
     # loader for training set 
@@ -164,28 +168,36 @@ def main():
                          shuffle = True,
                          collate_fn = utils.collate_fn)
     
-    
     # initialising the model
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    model = UNet()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = UNet(out_ch=channels_out)
     if torch.cuda.device_count()>1:
         print("Using", torch.cuda.device_count(), "GPUs")
         model = nn.DataParallel(model)
     
-    k = open('./training_check_file_'+patch_size,'w')
-    k.write("Using "+str(torch.cuda.device_count())+ " GPUs")
-    k.close()
+    curtime = ('_').join(np.array(time.localtime()[:5],dtype=str))
+    
+    trainfile = open('./training_check_file_'+str(patch_size) + '_' + curtime,'w')
+    trainfile.write('Patch size = '+str(patch_size))
+    trainfile.write("\nUsing "+str(torch.cuda.device_count())+ " GPUs\n")
+    trainfile.close()
     model.to(device)
     # print("\nModel summary: ",summary(model,input_size=(3, 512,512)))
     
     # define the loss function
-    criterion = loss_functions.DiceLoss().to(device)
-    
+    if loss == 'dice':
+        criterion = loss_functions.DiceLoss().to(device)
+    elif loss == 'generalised_dice':
+        criterion = loss_functions.GeneralisedDiceLoss().to(device)
+    else:
+        print('not a type of loss')
+        assert loss == 'dice'
+
     # define the optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=learningrate)
     
     run_training(train_dl, val_dl, model, criterion, optimizer,
-                 batch_size, max_epochs=40, save=False)
+                 batch_size, patch_size, curtime, device, max_epochs, save=True)
     
 if __name__=="__main__":
     main()
