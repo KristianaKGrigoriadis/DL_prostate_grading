@@ -7,12 +7,12 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-
 """ 
 Differences between train and val sets:
     - Training data is augmented, val and test data is not
+    - Training data may have batches split between different GPUs
+    
 """
-
 
 def imresize(im, size, interp='bilinear'):
     if interp == 'nearest':
@@ -46,6 +46,7 @@ class RotationTransform:
         angle = np.random.choice(self.angles)
         rotated_im = image.rotate(angle)
         rotated_seg = segmentation.rotate(angle)
+        # print("rotated_im.mode={}, rotated_seg.mode={}".format(rotated_im.mode, rotated_seg.mode))
         return rotated_im, rotated_seg
 
 
@@ -67,6 +68,7 @@ class HorizontalFlip:
         if flip:
             image = image.transpose(Image.FLIP_LEFT_RIGHT)
             segmentation = segmentation.transpose(Image.FLIP_LEFT_RIGHT)
+        # print("Horizontal flip:\t image.mode={}, segmentation.mode={}".format(image.mode, segmentation.mode))
         return image, segmentation
 
 class VerticalFlip:
@@ -87,6 +89,7 @@ class VerticalFlip:
         if flip:
             image = image.transpose(Image.FLIP_TOP_BOTTOM)
             segmentation = segmentation.transpose(Image.FLIP_TOP_BOTTOM)
+        # print("Vertical flip:\t image.mode={}, segmentation.mode={}".format(image.mode, segmentation.mode))            
         return image, segmentation
 
 class ToTensor(object):
@@ -100,9 +103,10 @@ class ToTensor(object):
         image = np.array(image)[:,:,:3]
         image = torch.from_numpy(image.transpose((2, 0, 1)))
         image = image.type(torch.double)/255
-        
+
         label = np.array(segmentation)
         label = torch.from_numpy(label)
+        # print("To Tensor:\t image.shape={}, label.shape={}".format(image.shape, label.shape))
         return image, label
 
 class NormalizeTransform:
@@ -116,7 +120,9 @@ class NormalizeTransform:
         self.normalise = transforms.Normalize(mean, std)
     def __call__(self, x):
         image, segmentation = x
-        im_norm = self.normalise(image)      
+        image = image.type(torch.float)        
+        im_norm = self.normalise(image)
+        # print("Normalise:\t im_norm.shape={}, segmentation.shape={}".format(im_norm.shape, segmentation.shape))        
         return im_norm, segmentation
 
 
@@ -171,11 +177,11 @@ class SegmentationDataset(Dataset):
             
         im = Image.open(im_path)
         lab = Image.open(lab_path)
-
-        if im.size[0] !=self.patch_height or im.size[1] != self.patch_width:
-            im  = imresize(im, (512,512), interp)
-            lab  = imresize(lab, (512,512), interp)
-
+        
+        if im.size != (self.patch_height, self.patch_width):
+            im  = imresize(im, (self.patch_height, self.patch_width), interp)
+            lab  = imresize(lab, (self.patch_height, self.patch_width), interp)
+            
         transformed_im, transformed_lab = self.transform((im, lab))
         sample = (transformed_im,transformed_lab)
         
