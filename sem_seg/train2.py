@@ -12,12 +12,8 @@ from torch.utils.data import DataLoader
 from unet import UNet
 
 
-#device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-#print("\ndevice =",device)
-
-"""python3 train3.py -l 'dirpath: /home/kgrigori/binary_classification/512/, learningrate: 0.01, batch_size: 1, max_epochs: 200, channels_out: 2'"""
-
-"""python3 train3.py -l 'dirpath: /home/kgrigori/patch_data/512/, learningrate: 0.01, batch_size: 1, max_epochs: 100, channels_out: 6, loss: dice'"""
+""" To run:
+python3 train2.py -l 'dirpath: /home/kgrigori/patch_data/512/, learningrate: 0.01, batch_size: 1, max_epochs: 100, channels_out: 6, loss: dice'"""
 
 # define a function to train the model
 def train_fn(train_data, model, criterion, optimizer, device):
