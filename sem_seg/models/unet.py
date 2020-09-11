@@ -49,7 +49,8 @@ class UNet(nn.Module):
         self.Maxpool2 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.Maxpool3 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.Maxpool4 = nn.MaxPool2d(kernel_size=2, stride=2)
-
+        self.dropout = nn.Dropout(0.5)
+        
         self.Conv1 = conv_block(in_ch, filters[0])
         self.Conv2 = conv_block(filters[0], filters[1])
         self.Conv3 = conv_block(filters[1], filters[2])
@@ -81,10 +82,11 @@ class UNet(nn.Module):
         e3 = self.Conv3(e3)
         
         e4 = self.Maxpool3(e3)
-        e4 = self.Conv4(e4)
+        e4 = self.Conv4(e4)        
         
         e5 = self.Maxpool4(e4)
         e5 = self.Conv5(e5)
+        e4 = self.dropout(e4)
         
         d5 = self.Up5(e5)
         d5 = torch.cat((e4, d5), dim=1)
