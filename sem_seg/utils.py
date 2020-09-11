@@ -16,12 +16,11 @@ def collate_fn(batch):
         # print(i,label.unique())
 
     images_t = torch.cat(images).reshape((len(images),) + tuple(images[0].shape))
-    labels_t = torch.cat(labels).reshape((len(labels),) + tuple(labels[0].shape))
-    
     images_t = images_t.float()
-
+    
+    labels_t = torch.cat(labels).reshape((len(labels),) + tuple(labels[0].shape))
+    labels_t = labels_t.type(torch.LongTensor)
     return images_t, labels_t
-
 
 
 def accuracy(model_output, labels):
