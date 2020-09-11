@@ -1,12 +1,8 @@
 import numpy as np
-import time
 
 from PIL import Image
 from pathlib import Path
 
-print('\n Done importing!\n')
-
-start = time.time()
 
 """ 
 This file splits our data into input images and masks and writes them to a 
@@ -81,6 +77,5 @@ for file in raw_path.glob('*/*.png'):
                 count +=1
                 print(count)
 
-print('Script took {:.3f} seconds to run'.format(time.time()-start))
 
 
