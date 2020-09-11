@@ -13,8 +13,8 @@ It also writes .odgt files, where each line is one patch:
     "width": , 
     "height": }     
 It should be run in the following way:
-    python patch_preparation.py -l 'base_path: \BASE_PATH, start_patch_size: 500, end_patch_size: 600, step_size: 50, overlap: 200, \
-    foreground: 0.2, intensity_threshold: 195'
+    python patch_preparation.py -l 'base_path: \BASE_PATH, start_patch_size: 512, end_patch_size: 612, step_size: 50, overlap: 200, \
+    foreground: 0.2'
 """
 
 
