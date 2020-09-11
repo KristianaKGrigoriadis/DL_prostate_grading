@@ -4,6 +4,7 @@ import os
 
 from pathlib import Path
 from PIL import Image
+from skimage.filters import threshold_otsu
 
 """ This file generates image patches with corresponding the label image. 
 It also writes .odgt files, where each line is one patch: 
@@ -17,7 +18,7 @@ It should be run in the following way:
 """
 
 
-def crop_image(base_path, patch_size, overlap, foreground, intensity_threshold):
+def crop_image(base_path, patch_size, overlap, foreground):
     # note: base_path: /home/kgrigori/patch_data in cluster
     img_path = base_path + '/images/'
     lab_path = base_path + '/labels/'    
@@ -84,7 +85,8 @@ def crop_image(base_path, patch_size, overlap, foreground, intensity_threshold):
                         # check to see if this image has sufficient foreground:
                         np_crop_ti = np.array(crop_ti.convert('L'))
                         total_px_crop = np_crop_ti.shape[0]*np_crop_ti.shape[1]
-                        foreground_crop_im = np_crop_ti < intensity_threshold
+                        t = threshold_otsu(total_px_crop)
+                        foreground_crop_im = np_crop_ti < t
                         prop = np.sum(foreground_crop_im)/total_px_crop
                         if prop < foreground:
                             continue
